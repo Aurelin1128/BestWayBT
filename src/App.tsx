@@ -89,7 +89,7 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [config]); // selectedBus 作為 dependency 確保重新整理時能利用最新選取狀態
+  }, [config, trainDirection]); // selectedBus 作為 dependency 確保重新整理時能利用最新選取狀態
 
 
 
@@ -252,7 +252,7 @@ export default function App() {
           </div>
 
           <GlassCard 
-            title={trainDirection === 'go' ? "台鐵時刻表 (中壢 ➔ 萬華)" : "台鐵時刻表 (萬華 ➔ 中壢)"}
+            title="台鐵時刻表"
             actions={
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.04)', padding: '3px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
