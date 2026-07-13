@@ -206,13 +206,13 @@ export async function getTrainTimetableAndDelay(): Promise<CombinedTrainInfo[]> 
     cachedTimetableDate = trainDate;
   }
 
-  // 2. 獲取即時延誤資訊
-  const delayUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/LiveTrainDelay?$format=JSON`;
-  const rawDelay = await fetchTDX<any>(delayUrl);
+  // 2. 獲取即時延誤資訊 (v2 版本，因 v3 無此端點)
+  const delayUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/TRA/LiveTrainDelay?$format=JSON`;
+  const rawDelay = await fetchTDX<any[]>(delayUrl);
 
   // 2. 建立誤點的 Map 對照表，方便快速搜尋車次 (TrainNo)
   const delayMap = new Map<string, number>();
-  const delayList = rawDelay?.TrainDelays || [];
+  const delayList = Array.isArray(rawDelay) ? rawDelay : [];
   delayList.forEach((item: any) => {
     delayMap.set(item.TrainNo, item.DelayTime || 0);
   });
