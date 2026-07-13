@@ -114,39 +114,57 @@ async function getAccessToken(): Promise<string> {
 }
 
 let lastRequestTime = 0;
+let lastRequestPromise: Promise<void> = Promise.resolve();
 
 /**
  * 封裝呼叫 TDX API 的基礎 fetch 方法
  * 自動帶入 Bearer Token 並處理錯誤
- * 業務邏輯：防併發過載限流機制。保證任意兩個 API 請求發送時間至少相隔 200 毫秒。
+ * 業務邏輯：防併發過載限流隊列。保證任意兩個 API 請求發送時間至少相隔 250 毫秒，避免 React 初始化併發引起 429。
  */
 async function fetchTDX<T>(url: string): Promise<T> {
   const token = await getAccessToken();
 
-  // 限制併發頻率，確保 API 呼叫相隔 200ms 以上，避免 TDX 限流 429
-  const now = Date.now();
-  const timeSinceLast = now - lastRequestTime;
-  if (timeSinceLast < 200) {
-    const delay = 200 - timeSinceLast;
-    await new Promise(resolve => setTimeout(resolve, delay));
-  }
+  // 取得當前的排隊鎖 (Promise 鏈)
+  const currentPromise = lastRequestPromise;
   
-  // 更新最後發送請求時間（需考慮已延遲過後的當前時間）
-  lastRequestTime = Date.now();
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    }
+  // 建立新的隊列 Promise，不論成功或失敗，皆在 finally 中釋放鎖，讓後續請求得以執行
+  let resolveQueue: () => void = () => {};
+  lastRequestPromise = new Promise<void>(resolve => {
+    resolveQueue = resolve;
   });
 
-  if (!response.ok) {
-    throw new Error(`TDX API 呼叫失敗 (HTTP ${response.status})。請求網址: ${url}`);
-  }
+  try {
+    // 等待前一個請求發送流程結束
+    await currentPromise;
 
-  return response.json() as Promise<T>;
+    // 限制併發頻率，確保 API 呼叫發送間隔在 250ms 以上
+    const now = Date.now();
+    const timeSinceLast = now - lastRequestTime;
+    if (timeSinceLast < 250) {
+      const delay = 250 - timeSinceLast;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    // 更新發送時間
+    lastRequestTime = Date.now();
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`TDX API 呼叫失敗 (HTTP ${response.status})。請求網址: ${url}`);
+    }
+
+    return await response.json() as T;
+  } finally {
+    // 釋放鎖，讓下一個排隊請求開始發送
+    resolveQueue();
+  }
 }
 
 /**
