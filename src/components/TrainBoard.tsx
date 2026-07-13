@@ -24,12 +24,14 @@ interface TrainBoardProps {
   trains: CombinedTrainInfo[];
   isLoading: boolean;
   highlightedTrains: HighlightedTrain[];
+  isBackDirection?: boolean;
 }
 
 export const TrainBoard: React.FC<TrainBoardProps> = ({
   trains,
   isLoading,
-  highlightedTrains
+  highlightedTrains,
+  isBackDirection
 }) => {
   // 建立車次與推薦狀態的查找對照 Map
   const highlightMap = new Map<string, HighlightedTrain>();
@@ -93,12 +95,12 @@ export const TrainBoard: React.FC<TrainBoardProps> = ({
                 {/* 發車與抵達時間 */}
                 <div className="train-time-col">
                   <div className="time-block">
-                    <span className="time-label">中壢發車</span>
+                    <span className="time-label">{isBackDirection ? '萬華發車' : '中壢發車'}</span>
                     <span className="time-value">{formatTime(train.departureTime)}</span>
                   </div>
                   <div className="time-separator-line"></div>
                   <div className="time-block">
-                    <span className="time-label">萬華抵達</span>
+                    <span className="time-label">{isBackDirection ? '中壢抵達' : '萬華抵達'}</span>
                     <span className="time-value">{formatTime(train.arrivalTime)}</span>
                   </div>
                 </div>

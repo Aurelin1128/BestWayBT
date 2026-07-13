@@ -292,6 +292,7 @@ export default function App() {
               trains={trains}
               isLoading={isLoadingTrain}
               highlightedTrains={[]}
+              isBackDirection={trainDirection === 'back'}
             />
           </GlassCard>
         </section>
