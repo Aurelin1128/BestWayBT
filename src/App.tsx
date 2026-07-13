@@ -174,8 +174,8 @@ export default function App() {
 
     try {
       // 併發載入，加速頁面渲染
-      const origin = trainDirection === 'go' ? '1017' : '1010';
-      const dest = trainDirection === 'go' ? '1010' : '1017';
+      const origin = trainDirection === 'go' ? '1120' : '1008';
+      const dest = trainDirection === 'go' ? '1008' : '1120';
       const data = await Promise.all([
         getFutaiBusETA(),
         getTrainTimetableAndDelay(origin, dest)
@@ -216,8 +216,8 @@ export default function App() {
   const refreshData = async () => {
     if (!config) return;
     try {
-      const origin = trainDirection === 'go' ? '1017' : '1010';
-      const dest = trainDirection === 'go' ? '1010' : '1017';
+      const origin = trainDirection === 'go' ? '1120' : '1008';
+      const dest = trainDirection === 'go' ? '1008' : '1120';
       const [busData, trainData] = await Promise.all([
         getFutaiBusETA(),
         getTrainTimetableAndDelay(origin, dest)
