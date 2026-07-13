@@ -143,7 +143,7 @@ async function fetchTDX<T>(url: string): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`TDX API 呼叫失敗 (HTTP ${response.status}): ${response.statusText}`);
+    throw new Error(`TDX API 呼叫失敗 (HTTP ${response.status})。請求網址: ${url}`);
   }
 
   return response.json() as Promise<T>;
