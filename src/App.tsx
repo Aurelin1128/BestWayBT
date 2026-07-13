@@ -52,7 +52,7 @@ export default function App() {
     const savedConfig = getSavedConfig();
     if (savedConfig && savedConfig.clientId && savedConfig.clientSecret) {
       setConfig(savedConfig);
-      loadAllData(savedConfig);
+      loadAllData(savedConfig, 'go');
     } else {
       // 金鑰不存在，強制彈出設定 Modal
       setForceConfig(true);
@@ -63,7 +63,7 @@ export default function App() {
   // 當台鐵方向切換時，自動重新載入所有資料
   useEffect(() => {
     if (config) {
-      loadAllData(config);
+      loadAllData(config, trainDirection);
     }
   }, [trainDirection]);
 
@@ -81,7 +81,7 @@ export default function App() {
       setRefreshTimer(prev => {
         if (prev <= 1) {
           // 時間到，重新整理資料
-          refreshData();
+          refreshData(trainDirection);
           return 30;
         }
         return prev - 1;
@@ -98,7 +98,10 @@ export default function App() {
   /**
    * 一一次載入所有即時資料 (用於初始化或手動重刷)
    */
-  const loadAllData = async (activeConfig: TDXConfig) => {
+  /**
+   * 一一次載入所有即時資料 (用於初始化或手動重刷)
+   */
+  const loadAllData = async (activeConfig: TDXConfig, direction: 'go' | 'back' = 'go') => {
     if (!activeConfig.clientId) return;
     setApiError('');
     setIsLoadingBus(true);
@@ -106,8 +109,9 @@ export default function App() {
 
     try {
       // 併發載入，加速頁面渲染
-      const origin = trainDirection === 'go' ? '1100' : '1010';
-      const dest = trainDirection === 'go' ? '1010' : '1100';
+      const origin = direction === 'go' ? '1100' : '1010';
+      const dest = direction === 'go' ? '1010' : '1100';
+      console.log(`[DEBUG] loadAllData - direction: ${direction}, origin: ${origin}, dest: ${dest}`);
       const data = await Promise.all([
         getFutaiBusETA(),
         getTrainTimetableAndDelay(origin, dest)
@@ -131,11 +135,12 @@ export default function App() {
   /**
    * 9秒定時器觸發的輕量刷新 (背景靜默更新，避免載入閃爍)
    */
-  const refreshData = async () => {
+  const refreshData = async (direction: 'go' | 'back' = 'go') => {
     if (!config) return;
     try {
-      const origin = trainDirection === 'go' ? '1100' : '1010';
-      const dest = trainDirection === 'go' ? '1010' : '1100';
+      const origin = direction === 'go' ? '1100' : '1010';
+      const dest = direction === 'go' ? '1010' : '1100';
+      console.log(`[DEBUG] refreshData - direction: ${direction}, origin: ${origin}, dest: ${dest}`);
       const [busData, trainData] = await Promise.all([
         getFutaiBusETA(),
         getTrainTimetableAndDelay(origin, dest)
@@ -274,7 +279,7 @@ export default function App() {
                 <button 
                   className="btn btn-secondary" 
                   style={{ padding: '6px 12px', fontSize: '13px' }}
-                  onClick={() => config && loadAllData(config)}
+                  onClick={() => config && loadAllData(config, trainDirection)}
                   disabled={isLoadingTrain}
                 >
                   <RefreshCw size={14} className={isLoadingTrain ? 'animate-spin' : ''} />
