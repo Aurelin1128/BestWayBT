@@ -50,11 +50,52 @@ export const BusBoard: React.FC<BusBoardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // 業務邏輯：輔助排序函數。將倒數進站中的公車優先置頂（按時間近至遠），未發車有發車時間者排中間，末班車已過等無效狀態排在最下方。
+  const sortBuses = (buses: BusEstimatedTime[]) => {
+    return [...buses].sort((a, b) => {
+      const getPriority = (bus: BusEstimatedTime) => {
+        // 倒數進站中 (有倒數時間，且 stopStatus 為 0)
+        if (bus.stopStatus === 0 && bus.estimateTime !== undefined && bus.estimateTime >= 0) {
+          return 3; 
+        }
+        // 未發車但有發車時間
+        if (bus.stopStatus === 1 && bus.nextBusTime) {
+          return 2;
+        }
+        // 其它視為最低優先級 (交管不停靠/末班車已過/今日未營運/已過站等)
+        return 1;
+      };
+
+      const priorityA = getPriority(a);
+      const priorityB = getPriority(b);
+
+      if (priorityA !== priorityB) {
+        return priorityB - priorityA; // 優先級高的排在上面
+      }
+
+      // 二級排序：
+      if (priorityA === 3) {
+        // 均為進站倒數中：時間由近到遠排序
+        return (a.estimateTime ?? 0) - (b.estimateTime ?? 0);
+      }
+
+      if (priorityA === 2) {
+        // 均為未發車：按發車時間由早到晚
+        const timeA = new Date(a.nextBusTime ?? 0).getTime();
+        const timeB = new Date(b.nextBusTime ?? 0).getTime();
+        return timeA - timeB;
+      }
+
+      // 最低優先級（如末班車已過）：按路線名稱排序
+      return a.routeName.localeCompare(b.routeName, undefined, { numeric: true });
+    });
+  };
+
   // 業務邏輯：依據桃園客運中壢至新屋路線規則：
-  // 去程 (Direction = 0) 代表從中壢發車往新屋/下北湖 (對於富泰公司站來說是往偏鄉，回家回程)
-  // 回程 (Direction = 1) 代表從偏鄉回中壢總站 (對於富泰公司站來說是去程，上班去程)
-  const inboundBuses = localEtas.filter(eta => eta.direction === 1); // 往中壢總站 (上班)
-  const outboundBuses = localEtas.filter(eta => eta.direction === 0); // 往偏鄉方向 (下班)
+  // 去程 (Direction = 0) 代表從中壢發車往新屋/下北湖 (回家回程)
+  // 回程 (Direction = 1) 代表從偏鄉回中壢總站 (上班去程)
+  const inboundBuses = sortBuses(localEtas.filter(eta => eta.direction === 1)); // 往中壢總站 (上班)
+  const outboundBuses = sortBuses(localEtas.filter(eta => eta.direction === 0)); // 往偏鄉方向 (下班)
 
   /**
    * 格式化剩餘到站秒數為易讀格式
