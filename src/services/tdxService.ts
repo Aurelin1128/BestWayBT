@@ -252,8 +252,9 @@ export async function getTrainTimetableAndDelay(
   const combinedList: CombinedTrainInfo[] = trainList
     .map((item: any) => {
       const trainInfo = item?.TrainInfo || item?.DailyTrainInfo;
-      const originStop = item?.OriginStopTime;
-      const destStop = item?.DestinationStopTime;
+      const stopTimes = item?.StopTimes || [];
+      const originStop = item?.OriginStopTime || stopTimes.find((s: any) => s.StationID === originStationID);
+      const destStop = item?.DestinationStopTime || stopTimes.find((s: any) => s.StationID === destinationStationID);
       
       if (!trainInfo || !originStop || !destStop) {
         return null;
@@ -265,10 +266,14 @@ export async function getTrainTimetableAndDelay(
       const delayTime = delayMap.get(trainNo) || 0;
 
       // 計算預計出發時間 (加入誤點時間)
-      const departureTimeStr = originStop.DepartureTime; // 格式 "HH:mm:ss"
+      const departureTimeStr = originStop.DepartureTime; // 格式 "HH:mm" 或 "HH:mm:ss"
       if (!departureTimeStr) return null;
       
-      const [h, m, s] = departureTimeStr.split(':').map(Number);
+      const timeParts = departureTimeStr.split(':').map(Number);
+      const h = timeParts[0];
+      const m = timeParts[1];
+      const s = timeParts[2] || 0;
+      
       const depDate = new Date();
       depDate.setHours(h, m, s, 0);
       
@@ -300,7 +305,11 @@ export async function getTrainTimetableAndDelay(
   const currentSec = now.getSeconds();
   
   const filteredList = combinedList.filter(train => {
-    const [h, m, s] = train.departureTime.split(':').map(Number);
+    const timeParts = train.departureTime.split(':').map(Number);
+    const h = timeParts[0];
+    const m = timeParts[1];
+    const s = timeParts[2] !== undefined ? timeParts[2] : 0;
+    
     // 判斷是否大於目前時間
     if (h > currentHour) return true;
     if (h === currentHour && m > currentMin) return true;
