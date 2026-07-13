@@ -251,7 +251,7 @@ export async function getTrainTimetableAndDelay(
   const trainList = rawTimetable?.TrainTimetables || [];
   const combinedList: CombinedTrainInfo[] = trainList
     .map((item: any) => {
-      const trainInfo = item?.DailyTrainInfo;
+      const trainInfo = item?.TrainInfo || item?.DailyTrainInfo;
       const originStop = item?.OriginStopTime;
       const destStop = item?.DestinationStopTime;
       
