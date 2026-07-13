@@ -242,43 +242,57 @@ export async function getTrainTimetableAndDelay(
   const delayMap = new Map<string, number>();
   const delayList = Array.isArray(rawDelay) ? rawDelay : [];
   delayList.forEach((item: any) => {
-    delayMap.set(item.TrainNo, item.DelayTime || 0);
+    if (item && item.TrainNo !== undefined) {
+      delayMap.set(item.TrainNo, item.DelayTime || 0);
+    }
   });
 
   // 3. 解析時刻表資料
   const trainList = rawTimetable?.TrainTimetables || [];
-  const combinedList: CombinedTrainInfo[] = trainList.map((item: any) => {
-    const trainInfo = item.DailyTrainInfo;
-    const originStop = item.OriginStopTime;
-    const destStop = item.DestinationStopTime;
-    const trainNo = trainInfo.TrainNo;
-    const delayTime = delayMap.get(trainNo) || 0;
+  const combinedList: CombinedTrainInfo[] = trainList
+    .map((item: any) => {
+      const trainInfo = item?.DailyTrainInfo;
+      const originStop = item?.OriginStopTime;
+      const destStop = item?.DestinationStopTime;
+      
+      if (!trainInfo || !originStop || !destStop) {
+        return null;
+      }
+      
+      const trainNo = trainInfo.TrainNo;
+      if (trainNo === undefined) return null;
+      
+      const delayTime = delayMap.get(trainNo) || 0;
 
-    // 計算預計出發時間 (加入誤點時間)
-    const departureTimeStr = originStop.DepartureTime; // 格式 "HH:mm:ss"
-    const [h, m, s] = departureTimeStr.split(':').map(Number);
-    const depDate = new Date();
-    depDate.setHours(h, m, s, 0);
-    
-    // 如果有誤點，加算誤點分鐘數
-    if (delayTime > 0) {
-      depDate.setMinutes(depDate.getMinutes() + delayTime);
-    }
-    const expH = String(depDate.getHours()).padStart(2, '0');
-    const expM = String(depDate.getMinutes()).padStart(2, '0');
-    const expectedDeparture = `${expH}:${expM}`;
+      // 計算預計出發時間 (加入誤點時間)
+      const departureTimeStr = originStop.DepartureTime; // 格式 "HH:mm:ss"
+      if (!departureTimeStr) return null;
+      
+      const [h, m, s] = departureTimeStr.split(':').map(Number);
+      const depDate = new Date();
+      depDate.setHours(h, m, s, 0);
+      
+      // 如果有誤點，加算誤點分鐘數
+      if (delayTime > 0) {
+        depDate.setMinutes(depDate.getMinutes() + delayTime);
+      }
+      const expH = String(depDate.getHours()).padStart(2, '0');
+      const expM = String(depDate.getMinutes()).padStart(2, '0');
+      const expectedDeparture = `${expH}:${expM}`;
 
-    return {
-      trainNo: trainNo,
-      trainTypeName: trainInfo.TrainTypeName?.Zh_tw || '',
-      trainTypeCode: trainInfo.TrainTypeCode || '',
-      departureTime: departureTimeStr,
-      arrivalTime: destStop.ArrivalTime,
-      tripLine: trainInfo.TripLine || 0,
-      delayTime: delayTime,
-      expectedDeparture: expectedDeparture
-    };
-  });
+      return {
+        trainNo: trainNo,
+        trainTypeName: trainInfo.TrainTypeName?.Zh_tw || '',
+        trainTypeCode: trainInfo.TrainTypeCode || '',
+        departureTime: departureTimeStr,
+        arrivalTime: destStop.ArrivalTime,
+        tripLine: trainInfo.TripLine || 0,
+        delayTime: delayTime,
+        expectedDeparture: expectedDeparture
+      };
+    })
+    .filter((t: CombinedTrainInfo | null): t is CombinedTrainInfo => t !== null);
+
 
   // 4. 篩選出表定或預計出發時間大於現在時間的班次
   const currentHour = now.getHours();
