@@ -191,8 +191,13 @@ export const RouteTimeline: React.FC = () => {
                   </div>
 
                   {/* 右側：站牌名稱 */}
-                  <div className={`timeline-stop-name ${stop.estimateTime !== undefined && stop.estimateTime < 0 ? 'text-passed' : ''}`}>
-                    {stop.stopName}
+                  <div className={`timeline-stop-name ${stop.estimateTime !== undefined && stop.estimateTime < 0 ? 'text-passed' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{stop.stopName}</span>
+                    {stop.plateNumb && stop.stopStatus === 0 && stop.estimateTime !== undefined && stop.estimateTime >= 0 && (
+                      <span className="plate-badge" style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.08)', color: 'rgba(255,255,255,0.6)', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                        🚌 {stop.plateNumb}
+                      </span>
+                    )}
                   </div>
                 </div>
               );

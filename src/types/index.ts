@@ -47,6 +47,7 @@ export interface BusEstimatedTime {
   estimateTime?: number;  // 預估到站時間 (單位：秒)，若未發車或過站可能不存在
   nextBusTime?: string;   // 下一班車預計發車時間 (ISO 8601 格式)
   isLastBus?: boolean;    // 是否為當日末班車
+  plateNumb?: string;     // 即時公車車牌號碼
 }
 
 /**
@@ -99,6 +100,7 @@ export interface RouteTimelineStop {
   estimateTime?: number;  // 目前這班車到該站的剩餘秒數 (秒)
   stopStatus: number;     // 站牌狀態 (0: 正常, 1: 未發車, 2: 交管, 3: 末班已過, 4: 未營運)
   nextBusTime?: string;   // 預估下一班車時間 (若未發車)
+  plateNumb?: string;     // 即時客運車牌號碼
 }
 
 /**

@@ -202,9 +202,16 @@ export const BusBoard: React.FC<BusBoardProps> = ({
                   </div>
 
                   <div className="bus-item-status-wrapper">
-                    <span className={`bus-countdown ${statusClass}`}>
-                      {formattedTime}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <span className={`bus-countdown ${statusClass}`}>
+                        {formattedTime}
+                      </span>
+                      {bus.plateNumb && bus.stopStatus === 0 && bus.estimateTime !== undefined && bus.estimateTime >= 0 && (
+                        <span className="plate-badge" style={{ fontSize: '11px', background: 'rgba(255, 255, 255, 0.08)', color: 'rgba(255,255,255,0.6)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                          🚌 {bus.plateNumb}
+                        </span>
+                      )}
+                    </div>
                     {isSelected && (
                       <span className="selected-badge">已選取轉乘</span>
                     )}

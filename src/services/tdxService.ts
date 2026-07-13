@@ -188,7 +188,8 @@ export async function getFutaiBusETA(): Promise<BusEstimatedTime[]> {
     stopStatus: item.StopStatus,
     estimateTime: item.EstimateTime,
     nextBusTime: item.NextBusTime,
-    isLastBus: item.IsLastBus === 1 || item.IsLastBus === true
+    isLastBus: item.IsLastBus === 1 || item.IsLastBus === true,
+    plateNumb: item.PlateNumb
   }));
 }
 
@@ -384,12 +385,13 @@ export async function get9025Timeline(targetRoute: '9025' | '9025A', direction: 
   const rawEta = await fetchTDX<any[]>(etaUrl);
 
   // 3. 建立即時 ETA 的對照表
-  const etaMap = new Map<string, { estimateTime?: number; stopStatus: number; nextBusTime?: string }>();
+  const etaMap = new Map<string, { estimateTime?: number; stopStatus: number; nextBusTime?: string; plateNumb?: string }>();
   rawEta.forEach(item => {
     etaMap.set(item.StopUID, {
       estimateTime: item.EstimateTime,
       stopStatus: item.StopStatus,
-      nextBusTime: item.NextBusTime
+      nextBusTime: item.NextBusTime,
+      plateNumb: item.PlateNumb
     });
   });
 
@@ -402,7 +404,8 @@ export async function get9025Timeline(targetRoute: '9025' | '9025A', direction: 
       stopSequence: stop.stopSequence,
       estimateTime: etaData?.estimateTime,
       stopStatus: etaData?.stopStatus ?? 1, // 預設 1: 未發車
-      nextBusTime: etaData?.nextBusTime
+      nextBusTime: etaData?.nextBusTime,
+      plateNumb: etaData?.plateNumb
     };
   });
 }
