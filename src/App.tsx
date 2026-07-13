@@ -48,7 +48,7 @@ export default function App() {
 
   // 計時器相關
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [refreshTimer, setRefreshTimer] = useState<number>(9); // 9 秒 API 定時刷新
+  const [refreshTimer, setRefreshTimer] = useState<number>(30); // 30 秒 API 定時刷新
 
   // 推薦台鐵車次狀態
   const [highlightedTrains, setHighlightedTrains] = useState<HighlightedTrain[]>([]);
@@ -81,7 +81,7 @@ export default function App() {
         if (prev <= 1) {
           // 時間到，重新整理資料
           refreshData();
-          return 9;
+          return 30;
         }
         return prev - 1;
       });
@@ -266,7 +266,7 @@ export default function App() {
           <div className="refresh-countdown-container">
             <div 
               className="refresh-circle-progress" 
-              style={{ transform: `rotate(${(9 - refreshTimer) * 40}deg)` }}
+              style={{ transform: `rotate(${(30 - refreshTimer) * 12}deg)` }}
             ></div>
             <span>{refreshTimer} 秒後更新</span>
           </div>
