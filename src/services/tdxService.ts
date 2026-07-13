@@ -174,19 +174,22 @@ export async function getFutaiBusETA(): Promise<BusEstimatedTime[]> {
   }));
 }
 
-// 快取台鐵當天時刻表，避免每次重新整理時重複呼叫不變的时刻表，節省 API 額度並降低 429 機率
-let cachedTrainTimetable: any = null;
+// 快取台鐵當天時刻表，Key 為 起點_to_終點，避免重複呼叫，節省 API 額度並降低 429 機率
+let cachedTrainTimetable: Record<string, any> = {};
 let cachedTimetableDate: string = '';
 
 /**
- * 取得台鐵中壢往萬華之最近五筆班次時刻與即時誤點資訊
+ * 取得台鐵指定起迄站之最近五筆班次時刻與即時誤點資訊
  * 業務邏輯：
- * 1. 取得今日的 OD 時刻表 (中壢 1017 ➔ 萬華 1010，一天只需取得一次，採 Cache 機制)
- * 2. 取得全台列車的即時誤點資訊 LiveTrainDelay (每 9 秒刷新)
+ * 1. 取得今日的 OD 時刻表 (預設中壢 1017 ➔ 萬華 1010，或反向，一天只需取得一次，採 Cache 機制)
+ * 2. 取得全台列車的即時誤點資訊 LiveTrainDelay (定時刷新)
  * 3. 篩選出出發時間大於目前時間的班次，並與延誤資訊進行合併
  * 4. 排序並取最近五筆
  */
-export async function getTrainTimetableAndDelay(): Promise<CombinedTrainInfo[]> {
+export async function getTrainTimetableAndDelay(
+  originStationID: string = '1017',
+  destinationStationID: string = '1010'
+): Promise<CombinedTrainInfo[]> {
   const now = new Date();
   
   // 取得今日日期格式為 YYYY-MM-DD
@@ -196,14 +199,21 @@ export async function getTrainTimetableAndDelay(): Promise<CombinedTrainInfo[]> 
   const trainDate = `${year}-${month}-${date}`;
 
   // 1. 取得今日時刻表（有快取則使用快取，無則呼叫 API）
-  let rawTimetable: any;
-  if (cachedTrainTimetable && cachedTimetableDate === trainDate) {
-    rawTimetable = cachedTrainTimetable;
-  } else {
-    const timetableUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/1017/to/1010/${trainDate}?$format=JSON`;
-    rawTimetable = await fetchTDX<any>(timetableUrl);
-    cachedTrainTimetable = rawTimetable;
+  const cacheKey = `${originStationID}_to_${destinationStationID}`;
+  
+  // 若日期跨天，清空快取
+  if (cachedTimetableDate !== trainDate) {
+    cachedTrainTimetable = {};
     cachedTimetableDate = trainDate;
+  }
+
+  let rawTimetable: any;
+  if (cachedTrainTimetable[cacheKey]) {
+    rawTimetable = cachedTrainTimetable[cacheKey];
+  } else {
+    const timetableUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${originStationID}/to/${destinationStationID}/${trainDate}?$format=JSON`;
+    rawTimetable = await fetchTDX<any>(timetableUrl);
+    cachedTrainTimetable[cacheKey] = rawTimetable;
   }
 
   // 2. 獲取即時延誤資訊 (v2 版本，因 v3 無此端點)

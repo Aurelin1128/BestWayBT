@@ -24,13 +24,27 @@ interface DecisionHelperProps {
   selectedBus: BusEstimatedTime | null;
   trains: CombinedTrainInfo[];
   highlightedTrains: HighlightedTrain[];
+  isBackDirection?: boolean;
 }
 
 export const DecisionHelper: React.FC<DecisionHelperProps> = ({
   selectedBus,
   trains,
-  highlightedTrains
+  highlightedTrains,
+  isBackDirection
 }) => {
+  if (isBackDirection) {
+    return (
+      <div className="decision-helper-panel empty-state">
+        <Compass className="info-icon" size={32} style={{ color: 'var(--color-success)' }} />
+        <div className="empty-text">
+          <h4>下班回程決策模式</h4>
+          <p>目前正以「萬華 ➔ 中壢 (回程)」顯示台鐵時刻。由於您下班是直接從萬華火車站乘車，不需從富泰公司搭乘公車轉乘，請直接依據右側時刻表與即時誤點選擇最合適的台鐵班次！</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!selectedBus) {
     return (
       <div className="decision-helper-panel empty-state">

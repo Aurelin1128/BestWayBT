@@ -40,6 +40,7 @@ export default function App() {
   const [busEtas, setBusEtas] = useState<BusEstimatedTime[]>([]);
   const [trains, setTrains] = useState<CombinedTrainInfo[]>([]);
   const [selectedBus, setSelectedBus] = useState<BusEstimatedTime | null>(null);
+  const [trainDirection, setTrainDirection] = useState<'go' | 'back'>('go');
   
   // 載入狀態與錯誤訊息
   const [isLoadingBus, setIsLoadingBus] = useState(false);
@@ -65,6 +66,13 @@ export default function App() {
       setIsSettingsOpen(true);
     }
   }, []);
+
+  // 當台鐵方向切換時，自動重新載入所有資料
+  useEffect(() => {
+    if (config) {
+      loadAllData(config);
+    }
+  }, [trainDirection]);
 
   // --- 定時器與 Polling 機制 ---
   // 業務邏輯：
@@ -166,9 +174,11 @@ export default function App() {
 
     try {
       // 併發載入，加速頁面渲染
+      const origin = trainDirection === 'go' ? '1017' : '1010';
+      const dest = trainDirection === 'go' ? '1010' : '1017';
       const data = await Promise.all([
         getFutaiBusETA(),
-        getTrainTimetableAndDelay()
+        getTrainTimetableAndDelay(origin, dest)
       ]);
       const busData = data[0];
       const trainData = data[1];
@@ -206,9 +216,11 @@ export default function App() {
   const refreshData = async () => {
     if (!config) return;
     try {
+      const origin = trainDirection === 'go' ? '1017' : '1010';
+      const dest = trainDirection === 'go' ? '1010' : '1017';
       const [busData, trainData] = await Promise.all([
         getFutaiBusETA(),
-        getTrainTimetableAndDelay()
+        getTrainTimetableAndDelay(origin, dest)
       ]);
       const allowedRoutes = ['5026', '5027', '5030', '5031', '5035', '5039', '5027A', '5032', '5033'];
       const filteredBusData = busData.filter(bus => allowedRoutes.includes(bus.routeName));
@@ -332,6 +344,7 @@ export default function App() {
               selectedBus={selectedBus}
               trains={trains}
               highlightedTrains={highlightedTrains}
+              isBackDirection={trainDirection === 'back'}
             />
           </GlassCard>
         </section>
@@ -344,17 +357,35 @@ export default function App() {
           </div>
 
           <GlassCard 
-            title="台鐵時刻表 (中壢 ➔ 萬華)"
+            title={trainDirection === 'go' ? "台鐵時刻表 (中壢 ➔ 萬華)" : "台鐵時刻表 (萬華 ➔ 中壢)"}
             actions={
-              <button 
-                className="btn btn-secondary" 
-                style={{ padding: '6px 12px', fontSize: '13px' }}
-                onClick={() => config && loadAllData(config)}
-                disabled={isLoadingTrain}
-              >
-                <RefreshCw size={14} className={isLoadingTrain ? 'animate-spin' : ''} />
-                重新整理
-              </button>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.04)', padding: '3px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button 
+                    className={`btn ${trainDirection === 'go' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '4px 10px', fontSize: '12px', border: 'none', borderRadius: '6px', transition: 'all 0.2s' }}
+                    onClick={() => setTrainDirection('go')}
+                  >
+                    上班去程 (中壢➜萬華)
+                  </button>
+                  <button 
+                    className={`btn ${trainDirection === 'back' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '4px 10px', fontSize: '12px', border: 'none', borderRadius: '6px', transition: 'all 0.2s', marginLeft: '2px' }}
+                    onClick={() => setTrainDirection('back')}
+                  >
+                    下班回程 (萬華➜中壢)
+                  </button>
+                </div>
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                  onClick={() => config && loadAllData(config)}
+                  disabled={isLoadingTrain}
+                >
+                  <RefreshCw size={14} className={isLoadingTrain ? 'animate-spin' : ''} />
+                  重新整理
+                </button>
+              </div>
             }
           >
             <TrainBoard 
