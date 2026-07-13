@@ -19,16 +19,11 @@ import { SettingsModal } from './components/SettingsModal';
 import { BusBoard } from './components/BusBoard';
 import { TrainBoard } from './components/TrainBoard';
 import { RouteTimeline } from './components/RouteTimeline';
-import { DecisionHelper } from './components/DecisionHelper';
 import { getSavedConfig, getFutaiBusETA, getTrainTimetableAndDelay } from './services/tdxService';
 import type { BusEstimatedTime, CombinedTrainInfo, TDXConfig } from './types';
 import { Train, Settings, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
 
-interface HighlightedTrain {
-  trainNo: string;
-  status: 'recommend' | 'tight' | 'impossible';
-  statusReason: string;
-}
+
 
 export default function App() {
   // --- 狀態宣告 ---
@@ -39,7 +34,6 @@ export default function App() {
   // 資料狀態
   const [busEtas, setBusEtas] = useState<BusEstimatedTime[]>([]);
   const [trains, setTrains] = useState<CombinedTrainInfo[]>([]);
-  const [selectedBus, setSelectedBus] = useState<BusEstimatedTime | null>(null);
   const [trainDirection, setTrainDirection] = useState<'go' | 'back'>('go');
   
   // 載入狀態與錯誤訊息
@@ -51,8 +45,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [refreshTimer, setRefreshTimer] = useState<number>(30); // 30 秒 API 定時刷新
 
-  // 推薦台鐵車次狀態
-  const [highlightedTrains, setHighlightedTrains] = useState<HighlightedTrain[]>([]);
+
 
   // --- 初始化與金鑰檢查 ---
   useEffect(() => {
@@ -96,70 +89,9 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [config, selectedBus]); // selectedBus 作為 dependency 確保重新整理時能利用最新選取狀態
+  }, [config]); // selectedBus 作為 dependency 確保重新整理時能利用最新選取狀態
 
-  // --- 業務邏輯：智慧轉乘推薦計算 ---
-  // 當選定公車或台鐵时刻變更時，觸發計算。
-  useEffect(() => {
-    if (!selectedBus || trains.length === 0) {
-      setHighlightedTrains([]);
-      return;
-    }
 
-    const busEtaSeconds = selectedBus.estimateTime ?? 0;
-    // 公車車程 (25分) + 步行轉乘 (5分) = 30 分鐘 (1800 秒)
-    const totalBufferSeconds = 1800; 
-    const totalSecondsToStation = busEtaSeconds + totalBufferSeconds;
-
-    // 預估抵達火車站之時間點 (Date 物件)
-    const nowTimestamp = Date.now();
-    const expectedArrivalDate = new Date(nowTimestamp + totalSecondsToStation * 1000);
-
-    // 比對最近五筆台鐵，計算每一車次的推薦度
-    const recommendations: HighlightedTrain[] = trains.map(train => {
-      // 解析台鐵發車時間
-      const [h, m, s] = train.departureTime.split(':').map(Number);
-      const trainDepDate = new Date();
-      trainDepDate.setHours(h, m, s, 0);
-      
-      // 考慮台鐵即時誤點時間
-      if (train.delayTime > 0) {
-        trainDepDate.setMinutes(trainDepDate.getMinutes() + train.delayTime);
-      }
-
-      // 計算抵達後到火車發車之間的時間差 (分鐘)
-      const diffMins = (trainDepDate.getTime() - expectedArrivalDate.getTime()) / 60000;
-
-      let status: 'recommend' | 'tight' | 'impossible';
-      let statusReason = '';
-
-      if (diffMins < 0) {
-        // 情況 A：火車在抵達前已發車，完全無法趕上
-        status = 'impossible';
-        statusReason = `火車預計於 ${train.expectedDeparture} 出發，此時您仍在搭乘公車或步行，無法趕上。`;
-      } else if (diffMins < 5) {
-        // 情況 B：轉乘時間小於 5 分鐘，極度緊迫，不建議
-        status = 'tight';
-        statusReason = `轉乘時間僅 ${Math.floor(diffMins)} 分鐘，時間極度危險。`;
-      } else if (diffMins >= 5 && diffMins <= 25) {
-        // 情況 C：5 - 25 分鐘為黃金轉乘區間，非常合適且安全
-        status = 'recommend';
-        statusReason = `抵達火車站後約有 ${Math.floor(diffMins)} 分鐘候車時間，最推薦！`;
-      } else {
-        // 情況 D：等待時間大於 25 分鐘，雖然可以趕上，但需要等待太久
-        status = 'tight';
-        statusReason = `抵達後需在車站等待長達 ${Math.floor(diffMins)} 分鐘，等待時間較長。`;
-      }
-
-      return {
-        trainNo: train.trainNo,
-        status,
-        statusReason
-      };
-    });
-
-    setHighlightedTrains(recommendations);
-  }, [selectedBus, trains]);
 
   // --- API 資料載入邏輯 ---
 
@@ -187,20 +119,6 @@ export default function App() {
       const filteredBusData = busData.filter(bus => allowedRoutes.includes(bus.routeName));
       setBusEtas(filteredBusData);
       setTrains(trainData);
-      
-      // 校準：若先前選取的公車在新資料中已經失效或過站，則自動清除選取狀態
-      if (selectedBus) {
-        const found = filteredBusData.find(
-          b => b.routeUID === selectedBus.routeUID && 
-               b.direction === selectedBus.direction &&
-               b.stopSequence === selectedBus.stopSequence
-        );
-        if (!found || found.estimateTime === undefined || found.estimateTime < 0 || found.stopStatus !== 0) {
-          setSelectedBus(null);
-        } else {
-          setSelectedBus(found); // 更新選定公車的最新 ETA 數據
-        }
-      }
     } catch (err: any) {
       console.error(err);
       setApiError(err.message || 'API 串接錯誤，請確認金鑰是否有效。');
@@ -226,20 +144,6 @@ export default function App() {
       const filteredBusData = busData.filter(bus => allowedRoutes.includes(bus.routeName));
       setBusEtas(filteredBusData);
       setTrains(trainData);
-
-      // 校準已選取公車的狀態
-      if (selectedBus) {
-        const found = filteredBusData.find(
-          b => b.routeUID === selectedBus.routeUID && 
-               b.direction === selectedBus.direction &&
-               b.stopSequence === selectedBus.stopSequence
-        );
-        if (!found || found.estimateTime === undefined || found.estimateTime < 0 || found.stopStatus !== 0) {
-          setSelectedBus(null);
-        } else {
-          setSelectedBus(found);
-        }
-      }
     } catch (err) {
       console.error('背景重新整理失敗:', err);
     }
@@ -334,17 +238,8 @@ export default function App() {
             <BusBoard 
               busEtas={busEtas}
               isLoading={isLoadingBus}
-              selectedBus={selectedBus}
-              onSelectBus={setSelectedBus}
-            />
-          </GlassCard>
-
-          <GlassCard title="💡 智慧出發決策建議">
-            <DecisionHelper 
-              selectedBus={selectedBus}
-              trains={trains}
-              highlightedTrains={highlightedTrains}
-              isBackDirection={trainDirection === 'back'}
+              selectedBus={null}
+              onSelectBus={() => {}}
             />
           </GlassCard>
         </section>
@@ -391,7 +286,7 @@ export default function App() {
             <TrainBoard 
               trains={trains}
               isLoading={isLoadingTrain}
-              highlightedTrains={highlightedTrains}
+              highlightedTrains={[]}
             />
           </GlassCard>
         </section>
