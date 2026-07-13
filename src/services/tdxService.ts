@@ -338,7 +338,8 @@ export async function get9025Stops(): Promise<{ routeName: string; direction: nu
   const rawData = await fetchTDX<any[]>(url);
 
   cached9025Stops = rawData.map(item => {
-    const routeName = item.RouteName?.Zh_tw || '';
+    // 優先使用 SubRouteName (如 9025A) 來正確區分主副路線，若無則使用 RouteName (如 9025)
+    const routeName = item.SubRouteName?.Zh_tw || item.RouteName?.Zh_tw || '';
     const direction = item.Direction;
     const stopsList = item.Stops || [];
     const stops = stopsList.map((s: any) => ({
